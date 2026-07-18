@@ -3,6 +3,9 @@
 -- Jalankan di Supabase SQL Editor
 -- ================================================================
 
+-- 0. Hapus tabel lama beserta policy jika ada (Mencegah konflik)
+DROP TABLE IF EXISTS sensor_logs CASCADE;
+
 -- 1. Buat tabel sensor_logs
 CREATE TABLE IF NOT EXISTS sensor_logs (
     id            UUID                     DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -23,12 +26,14 @@ CREATE INDEX IF NOT EXISTS idx_sensor_logs_created_at
 ALTER TABLE sensor_logs ENABLE ROW LEVEL SECURITY;
 
 -- 4. Policy: Izinkan INSERT dari ESP32 (anon key)
+DROP POLICY IF EXISTS "Allow anon INSERT" ON sensor_logs;
 CREATE POLICY "Allow anon INSERT"
     ON sensor_logs FOR INSERT
     TO anon
     WITH CHECK (true);
 
 -- 5. Policy: Izinkan SELECT untuk dashboard web (anon key)
+DROP POLICY IF EXISTS "Allow anon SELECT" ON sensor_logs;
 CREATE POLICY "Allow anon SELECT"
     ON sensor_logs FOR SELECT
     TO anon

@@ -6,8 +6,8 @@ import { Activity, Droplet, FlaskConical, AlertTriangle, CheckCircle2, Clock, Do
 import * as XLSX from "xlsx";
 
 type SensorData = {
-  ph_avg: number;
-  water_level_avg: number;
+  ph: number;
+  water_percent: number;
 };
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
       const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
       const { data, error } = await supabase
         .from("sensor_logs")
-        .select("ph_avg, water_level_avg, created_at")
+        .select("ph, water_percent, created_at")
         .gte("created_at", oneMinuteAgo)
         .order("created_at", { ascending: false });
 
@@ -33,12 +33,12 @@ export default function Home() {
 
       if (data && data.length > 0) {
         // Hitung rata-rata dari data 1 menit terakhir
-        const ph_sum = data.reduce((acc, curr) => acc + curr.ph_avg, 0);
-        const water_sum = data.reduce((acc, curr) => acc + curr.water_level_avg, 0);
+        const ph_sum = data.reduce((acc, curr) => acc + curr.ph, 0);
+        const water_sum = data.reduce((acc, curr) => acc + curr.water_percent, 0);
         
         setData({
-          ph_avg: ph_sum / data.length,
-          water_level_avg: Math.round(water_sum / data.length)
+          ph: ph_sum / data.length,
+          water_percent: Math.round(water_sum / data.length)
         });
         // Ambil waktu dari data terbaru
         setLastUpdated(new Date(data[0].created_at));
@@ -46,7 +46,7 @@ export default function Home() {
         // Fallback: Jika tidak ada data di 1 menit terakhir, ambil 1 data yang paling terakhir kali tersimpan
         const { data: fallbackData } = await supabase
           .from("sensor_logs")
-          .select("ph_avg, water_level_avg, created_at")
+          .select("ph, water_percent, created_at")
           .order("created_at", { ascending: false })
           .limit(1)
           .single();
@@ -71,7 +71,7 @@ export default function Home() {
       // Ambil data lebih banyak (misal 5000 data terakhir) untuk diagregasi per jam
       const { data: exportData, error: exportError } = await supabase
         .from("sensor_logs")
-        .select("created_at, ph_avg, water_level_avg")
+        .select("created_at, ph, water_percent")
         .order("created_at", { ascending: false })
         .limit(5000);
 
@@ -92,16 +92,16 @@ export default function Home() {
         if (!hourlyData[hourKey]) {
           hourlyData[hourKey] = { ph_sum: 0, water_sum: 0, count: 0, time: date };
         }
-        hourlyData[hourKey].ph_sum += row.ph_avg;
-        hourlyData[hourKey].water_sum += row.water_level_avg;
+        hourlyData[hourKey].ph_sum += row.ph;
+        hourlyData[hourKey].water_sum += row.water_percent;
         hourlyData[hourKey].count += 1;
       });
 
       // 1. Format Data untuk Sheet 1 (Semua Data Inputan Asli)
       const rawFormattedData = exportData.map((row) => ({
         "Waktu Pencatatan": new Date(row.created_at).toLocaleString("id-ID"),
-        "pH": Number(row.ph_avg.toFixed(2)),
-        "Sisa Air (%)": row.water_level_avg
+        "pH": Number(row.ph.toFixed(2)),
+        "Sisa Air (%)": row.water_percent
       }));
 
       // 2. Format Data untuk Sheet 2 (Rata-rata Per Jam)
@@ -168,8 +168,8 @@ export default function Home() {
     );
   }
 
-  const ph_avg = data?.ph_avg ?? 0;
-  const water_level_avg = data?.water_level_avg ?? 0;
+  const ph_avg = data?.ph ?? 0;
+  const water_level_avg = data?.water_percent ?? 0;
 
   const isPhSafe = ph_avg >= 6.5 && ph_avg <= 8.5;
   const isWaterSafe = water_level_avg >= 20;

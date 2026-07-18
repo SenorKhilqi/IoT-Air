@@ -45,7 +45,7 @@ export default function StatisticsPage() {
 
         const { data: rawData, error: fetchError } = await supabase
           .from("sensor_logs")
-          .select("created_at, ph_avg, water_level_avg")
+          .select("created_at, ph, water_percent")
           .gte("created_at", fromDate.toISOString())
           .order("created_at", { ascending: false })
           .limit(10000);
@@ -78,8 +78,8 @@ export default function StatisticsPage() {
           if (!aggregated[key]) {
             aggregated[key] = { ph_sum: 0, water_sum: 0, count: 0, ts: date.getTime() };
           }
-          aggregated[key].ph_sum += row.ph_avg;
-          aggregated[key].water_sum += row.water_level_avg;
+          aggregated[key].ph_sum += row.ph;
+          aggregated[key].water_sum += row.water_percent;
           aggregated[key].count += 1;
         });
 
