@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "author": "Khilqi",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": -150, "left": 50, "attrs": { "pins": "i2c" } },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -51.4,
+      "left": -153.6,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 54.2,
+      "left": -153.6,
+      "attrs": { "color": "red" }
+    },
+    { "type": "wokwi-microsd-card", "id": "sd", "top": 150, "left": -150, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "ph_sensor", "top": 152.3, "left": 134.2, "attrs": {} },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "water_sensor",
+      "top": 152.3,
+      "left": 268.6,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "lcd:SDA", "esp:21", "green", [ "v0" ] ],
+    [ "lcd:SCL", "esp:22", "blue", [ "v0" ] ],
+    [ "lcd:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "lcd:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "btn1:1.l", "esp:32", "green", [ "v0" ] ],
+    [ "btn1:2.l", "esp:GND.1", "black", [ "v0" ] ],
+    [ "btn2:1.l", "esp:33", "red", [ "v0" ] ],
+    [ "btn2:2.l", "esp:GND.1", "black", [ "v0" ] ],
+    [ "sd:CS", "esp:5", "purple", [ "v0" ] ],
+    [ "sd:SCK", "esp:18", "gray", [ "v0" ] ],
+    [ "sd:MOSI", "esp:23", "blue", [ "v0" ] ],
+    [ "sd:MISO", "esp:19", "orange", [ "v0" ] ],
+    [ "sd:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "sd:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "ph_sensor:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "ph_sensor:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "ph_sensor:SIG", "esp:34", "yellow", [ "v0" ] ],
+    [ "water_sensor:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "water_sensor:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "water_sensor:SIG", "esp:35", "yellow", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
