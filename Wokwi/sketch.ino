@@ -18,7 +18,7 @@ const char *supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 float phValue;
-int waterLevel;
+float flowSpeed; // Kecepatan aliran air dalam m/s
 
 // Timer variables
 unsigned long previousMillisUpdate = 0;
@@ -30,7 +30,7 @@ const long intervalSample = 60000; // Sampling tiap 1 menit (60.000 ms)
 // Averaging variables
 int sampleCount = 0;
 float phSum = 0.0;
-long waterSum = 0;
+float flowSum = 0.0;
 
 // Button debounce & display state
 unsigned long lastButtonPressSave = 0;
@@ -88,13 +88,19 @@ void loop() {
     // Simulasi pH 0-14
     phValue = map(phRaw, 0, 4095, 0, 140) / 10.0;
 
-    // Simulasi level air %
-    waterLevel = map(waterRaw, 0, 4095, 0, 100);
+    // --- 1b. Pembacaan Sensor Aliran Air / Flow Meter (Lebih Realistis) ---
+    // Di dunia nyata, flow meter (seperti YF-S201) menggunakan interrupt untuk menghitung pulsa/putaran baling-baling.
+    // Di sini kita gunakan potensiometer untuk mensimulasikan kecepatan (0 hingga 5.0 m/s).
+    int flowRaw = analogRead(WATER_PIN);
+    
+    // Konversi ADC ke kecepatan (m/s). Asumsi max 5.0 m/s
+    flowSpeed = flowRaw * (5.0 / 4095.0);
 
     Serial.print("pH: ");
     Serial.print(phValue);
-    Serial.print(" | Air: ");
-    Serial.println(waterLevel);
+    Serial.print(" | Flow: ");
+    Serial.print(flowSpeed);
+    Serial.println(" m/s");
 
     // Update LCD hanya jika tidak sedang menampilkan status/pesan pop-up
     if (currentMillis > menuDisplayUntil) {
@@ -109,16 +115,16 @@ void loop() {
         lcd.print(" Tdk OK  ");
       }
 
-      // Baris 2: Menampilkan level air beserta keterangannya
+      // Baris 2: Menampilkan kecepatan aliran beserta keterangannya
       lcd.setCursor(0, 1);
-      lcd.print("Air:");
-      lcd.print(waterLevel);
-      lcd.print("% ");
+      lcd.print("Flow:");
+      lcd.print(flowSpeed, 1);
+      lcd.print("m/s ");
       
-      if (waterLevel > 50) {
-        lcd.print("Cukup  ");
+      if (flowSpeed > 0.5) {
+        lcd.print("Jalan");
       } else {
-        lcd.print("Rendah ");
+        lcd.print("Mati ");
       }
     }
   }
@@ -129,28 +135,28 @@ void loop() {
 
     // Tambahkan nilai ke penampung
     phSum += phValue;
-    waterSum += waterLevel;
+    flowSum += flowSpeed;
     sampleCount++;
 
     // Jika sudah 60 sampel (1 jam)
     if (sampleCount >= 60) {
       float phAvg = phSum / 60.0;
-      float waterAvg = (float)waterSum / 60.0;
+      float flowAvg = flowSum / 60.0;
 
       Serial.println("\n=== LAPORAN 1 JAM ===");
       Serial.print("Rata-rata pH: ");
       Serial.println(phAvg, 2);
-      Serial.print("Rata-rata Air: ");
-      Serial.print(waterAvg, 1);
-      Serial.println("%");
+      Serial.print("Rata-rata Flow: ");
+      Serial.print(flowAvg, 2);
+      Serial.println(" m/s");
       Serial.println("=====================\n");
 
       // Kirim data ke Supabase
-      kirimKeSupabase(phAvg, (int)waterAvg);
+      kirimKeSupabase(phAvg, flowAvg);
 
       // Reset variabel penampung
       phSum = 0;
-      waterSum = 0;
+      flowSum = 0;
       sampleCount = 0;
     }
   }
@@ -173,7 +179,7 @@ void loop() {
       lcd.print("Status Cek:");
       
       lcd.setCursor(0, 1);
-      if (phValue >= 6.5 && phValue <= 8.5 && waterLevel > 50) {
+      if (phValue >= 6.5 && phValue <= 8.5 && flowSpeed > 0.5) {
         lcd.print("Semua AMAN");
       } else {
         lcd.print("Cek Sensor!");
@@ -195,7 +201,7 @@ void saveData() {
     file.print(",");
     file.print(phValue);
     file.print(",");
-    file.println(waterLevel);
+    file.println(flowSpeed);
     file.close();
 
     Serial.println("Data Tersimpan ke SD");
@@ -220,7 +226,9 @@ void setupWiFi() {
   lcd.print("Koneksi WiFi...");
 
   Serial.print("Menghubungkan ke WiFi");
-  WiFi.begin("Wokwi-GUEST", "");
+  
+// ---> BAGIAN YANG DIPERBAIKI <---
+  WiFi.begin("asdfghjkll", "asdfghjkl");
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -239,7 +247,7 @@ void setupWiFi() {
   delay(2000);
 }
 
-void kirimKeSupabase(float ph, int air) {
+void kirimKeSupabase(float ph, float flow) {
   if (WiFi.status() == WL_CONNECTED) {
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -254,7 +262,9 @@ void kirimKeSupabase(float ph, int air) {
     http.addHeader("Authorization", String("Bearer ") + String(supabaseKey));
     http.addHeader("Content-Type", "application/json");
 
-    String payload = "{\"ph_avg\":" + String(ph, 2) + ",\"water_level_avg\":" + String(air) + "}";
+    // Catatan DB: Pastikan kolom tipe datanya sudah FLOAT. 
+    // Key JSON saat ini masih "water_level_avg" mengikuti schema sebelumnya.
+    String payload = "{\"ph_avg\":" + String(ph, 2) + ",\"water_level_avg\":" + String(flow, 2) + "}";
 
     int httpResponseCode = http.POST(payload);
 

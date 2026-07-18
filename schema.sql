@@ -3,7 +3,7 @@ CREATE TABLE sensor_logs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   ph_avg FLOAT,
-  water_level_avg INTEGER
+  water_level_avg FLOAT
 );
 
 -- 2. Mengaktifkan Row Level Security (RLS) pada tabel
