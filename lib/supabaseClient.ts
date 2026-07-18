@@ -1,10 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+// ================================================================
+// lib/supabaseClient.ts — Backward-compatible singleton
+// Dipakai oleh page.tsx & statistics/page.tsx yang sudah ada.
+// Untuk komponen baru, gunakan:
+//   Client Component → import { createClient } from '@/lib/supabase/client'
+//   Server Component → import { createClient } from '@/lib/supabase/server'
+// ================================================================
+import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Named export createClient juga tersedia
+export { createClient } from './supabase/client'

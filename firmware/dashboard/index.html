@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHE Water Quality Monitor — Dashboard</title>
+<meta name="description" content="Dashboard realtime monitoring kualitas air — pH, debit, level tangki berbasis IoT ESP32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0a0e1a;
+  --surface:   #111827;
+  --surface2:  #1a2235;
+  --border:    rgba(255,255,255,0.07);
+  --text:      #e2e8f0;
+  --muted:     #64748b;
+  --accent:    #38bdf8;
+  --green:     #22d3a0;
+  --yellow:    #fbbf24;
+  --red:       #f87171;
+  --purple:    #a78bfa;
+  --radius:    16px;
+  --radius-sm: 10px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background Grid ──────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,14,26,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #38bdf8, #22d3a0);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 18px;
+}
+.logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+.logo-text span { color: var(--accent); }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+#status-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  background: rgba(34,211,160,0.12);
+  color: var(--green);
+  border: 1px solid rgba(34,211,160,0.3);
+  transition: all .3s;
+}
+#status-badge .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+#last-update {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Config Bar ───────────────────────────────────────────── */
+.config-bar {
+  margin: 20px 24px 0;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+}
+.config-bar label { font-size: 12px; color: var(--muted); }
+.config-bar input {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px;
+  font-family: 'JetBrains Mono', monospace; width: 320px; outline: none;
+  transition: border-color .2s;
+}
+.config-bar input:focus { border-color: var(--accent); }
+.config-bar button {
+  padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  background: linear-gradient(135deg, #38bdf8, #22d3a0);
+  color: #0a0e1a; transition: opacity .2s;
+}
+.config-bar button:hover { opacity: 0.85; }
+
+/* ── Main Grid ────────────────────────────────────────────── */
+main {
+  max-width: 1400px; margin: 0 auto;
+  padding: 20px 24px 40px;
+  position: relative; z-index: 1;
+}
+
+/* ── Cards Row ────────────────────────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+  position: relative; overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.card.ph::before    { background: linear-gradient(90deg, #38bdf8, #7dd3fc); }
+.card.flow::before  { background: linear-gradient(90deg, #22d3a0, #6ee7b7); }
+.card.total::before { background: linear-gradient(90deg, #a78bfa, #c4b5fd); }
+.card.level::before { background: linear-gradient(90deg, #fbbf24, #fde68a); }
+.card.pct::before   { background: linear-gradient(90deg, #f87171, #fca5a5); }
+.card.wifi::before  { background: linear-gradient(90deg, #34d399, #6ee7b7); }
+.card.upd::before   { background: linear-gradient(90deg, #64748b, #94a3b8); }
+
+.card-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 10px;
+}
+.card-value {
+  font-size: 32px; font-weight: 700; letter-spacing: -1px;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+.card.ph    .card-value { color: #7dd3fc; }
+.card.flow  .card-value { color: #6ee7b7; }
+.card.total .card-value { color: #c4b5fd; }
+.card.level .card-value { color: #fde68a; }
+.card.pct   .card-value { color: #fca5a5; }
+.card.wifi  .card-value { color: var(--green); font-size: 18px; }
+.card.upd   .card-value { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+.card-unit { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.card-status {
+  margin-top: 8px; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px; display: inline-block;
+}
+.status-ok   { background: rgba(34,211,160,.12); color: var(--green); }
+.status-warn { background: rgba(251,191,36,.12);  color: var(--yellow); }
+.status-crit { background: rgba(248,113,113,.12); color: var(--red); }
+
+/* ── Water Level Bar ─────────────────────────────────────── */
+.level-bar-wrap {
+  margin-top: 10px; background: var(--surface2);
+  border-radius: 6px; height: 6px; overflow: hidden;
+}
+.level-bar {
+  height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, #fbbf24, #22d3a0);
+  transition: width .5s ease;
+}
+
+/* ── Chart Section ────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 18px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+}
+.chart-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.chart-title {
+  font-size: 14px; font-weight: 600;
+}
+.chart-badge {
+  font-size: 11px; padding: 3px 9px; border-radius: 20px;
+  background: rgba(56,189,248,0.1); color: var(--accent);
+  font-weight: 600;
+}
+.chart-canvas-wrap { position: relative; height: 200px; }
+
+/* ── Footer ───────────────────────────────────────────────── */
+footer {
+  text-align: center; padding: 20px; font-size: 12px;
+  color: var(--muted); position: relative; z-index: 1;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .config-bar input { width: 100%; }
+  .card-value { font-size: 26px; }
+  header { padding: 0 16px; }
+  main { padding: 14px 16px 32px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💧</div>
+    <div class="logo-text">SHE <span>Water</span> Monitor</div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge"><span class="dot"></span><span id="status-text">Memuat...</span></div>
+    <div id="last-update">--:--:--</div>
+  </div>
+</header>
+
+<div class="config-bar">
+  <label for="supa-url">Supabase URL</label>
+  <input id="supa-url" type="text" placeholder="https://xxxx.supabase.co" value="">
+  <label for="supa-key">Anon Key</label>
+  <input id="supa-key" type="text" placeholder="eyJhbGciOi..." value="">
+  <button onclick="applyConfig()">Hubungkan</button>
+  <span id="config-msg" style="font-size:12px;color:var(--muted)"></span>
+</div>
+
+<main>
+  <!-- Cards -->
+  <div class="cards-grid">
+    <div class="card ph">
+      <div class="card-label">pH Air</div>
+      <div class="card-value" id="val-ph">--<span class="card-unit"></span></div>
+      <div class="card-status status-ok" id="stat-ph">Memuat</div>
+    </div>
+    <div class="card flow">
+      <div class="card-label">Debit Air</div>
+      <div class="card-value" id="val-flow">--<span class="card-unit">L/m</span></div>
+      <div class="card-status status-ok" id="stat-flow">Memuat</div>
+    </div>
+    <div class="card total">
+      <div class="card-label">Total Volume</div>
+      <div class="card-value" id="val-total">--<span class="card-unit">L</span></div>
+    </div>
+    <div class="card level">
+      <div class="card-label">Level Air</div>
+      <div class="card-value" id="val-level">--<span class="card-unit">cm</span></div>
+      <div class="level-bar-wrap"><div class="level-bar" id="level-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card pct">
+      <div class="card-label">Volume Tangki</div>
+      <div class="card-value" id="val-pct">--<span class="card-unit">%</span></div>
+      <div class="card-status status-ok" id="stat-pct">Memuat</div>
+    </div>
+    <div class="card wifi">
+      <div class="card-label">Status WiFi ESP32</div>
+      <div class="card-value" id="val-wifi">--</div>
+    </div>
+    <div class="card upd">
+      <div class="card-label">Last Update</div>
+      <div class="card-value" id="val-update">--</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">📊 Tren pH (1 jam terakhir)</span>
+        <span class="chart-badge">REALTIME</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-ph"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">🌊 Debit Air — L/min</span>
+        <span class="chart-badge">REALTIME</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-flow"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">📦 Level Tangki — cm</span>
+        <span class="chart-badge">REALTIME</span>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-level"></canvas>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>SHE Water Quality Monitor · ESP32 IoT System · Auto-refresh setiap 30 detik</footer>
+
+<script>
+// ================================================================
+// Config
+// ================================================================
+let SUPA_URL = localStorage.getItem('supa_url') || '';
+let SUPA_KEY = localStorage.getItem('supa_key') || '';
+const REFRESH_MS = 30000;
+const HISTORY_LIMIT = 24; // jumlah titik di grafik
+
+document.getElementById('supa-url').value = SUPA_URL;
+document.getElementById('supa-key').value = SUPA_KEY;
+
+function applyConfig() {
+  SUPA_URL = document.getElementById('supa-url').value.trim().replace(/\/$/, '');
+  SUPA_KEY = document.getElementById('supa-key').value.trim();
+  localStorage.setItem('supa_url', SUPA_URL);
+  localStorage.setItem('supa_key', SUPA_KEY);
+  document.getElementById('config-msg').textContent = '✓ Konfigurasi disimpan.';
+  fetchData();
+  setTimeout(() => document.getElementById('config-msg').textContent = '', 3000);
+}
+
+// ================================================================
+// Chart.js Setup
+// ================================================================
+const chartDefaults = {
+  type: 'line',
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 400 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: { color: '#64748b', maxTicksLimit: 6, font: { size: 10, family: 'JetBrains Mono' } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      },
+      y: {
+        ticks: { color: '#64748b', font: { size: 10, family: 'JetBrains Mono' } },
+        grid: { color: 'rgba(255,255,255,0.04)' }
+      }
+    }
+  }
+};
+
+function makeDataset(color, label) {
+  return {
+    label, data: [],
+    borderColor: color,
+    backgroundColor: color.replace('rgb', 'rgba').replace(')', ',0.08)'),
+    borderWidth: 2, pointRadius: 2, tension: 0.4, fill: true
+  };
+}
+
+const chartPH = new Chart(document.getElementById('chart-ph'), {
+  ...chartDefaults,
+  data: { labels: [], datasets: [makeDataset('rgb(125,211,252)', 'pH')] }
+});
+const chartFlow = new Chart(document.getElementById('chart-flow'), {
+  ...chartDefaults,
+  data: { labels: [], datasets: [makeDataset('rgb(110,231,183)', 'Flow (L/m)')] }
+});
+const chartLevel = new Chart(document.getElementById('chart-level'), {
+  ...chartDefaults,
+  data: { labels: [], datasets: [makeDataset('rgb(253,230,138)', 'Level (cm)')] }
+});
+
+function pushChart(chart, label, value) {
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if (chart.data.labels.length > HISTORY_LIMIT) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update();
+}
+
+// ================================================================
+// Fetch + Update UI
+// ================================================================
+async function fetchData() {
+  if (!SUPA_URL || !SUPA_KEY) {
+    setStatus(false, 'Isi konfigurasi Supabase');
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `${SUPA_URL}/rest/v1/sensor_logs?select=*&order=created_at.desc&limit=1`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
+    );
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    if (!rows.length) { setStatus(false, 'Belum ada data'); return; }
+
+    const d = rows[0];
+    const ts = new Date(d.created_at);
+    const timeStr = ts.toLocaleTimeString('id-ID', { hour12: false });
+    const dateStr = ts.toLocaleDateString('id-ID', { day:'2-digit', month:'short' });
+    const label   = `${dateStr} ${timeStr}`;
+
+    // Cards
+    setText('val-ph',     d.ph?.toFixed(2) ?? '--');
+    setText('val-flow',   d.flow?.toFixed(2) ?? '--');
+    setText('val-total',  d.total_liter?.toFixed(1) ?? '--');
+    setText('val-level',  d.water_level?.toFixed(1) ?? '--');
+    setText('val-pct',    d.water_percent ?? '--');
+    setText('val-wifi',   d.wifi_status ?? '--');
+    setText('val-update', `${dateStr} ${timeStr}`);
+
+    // Level bar
+    const pct = Math.min(100, Math.max(0, d.water_percent ?? 0));
+    document.getElementById('level-bar').style.width = pct + '%';
+
+    // pH status
+    const ph = d.ph;
+    if (ph >= 6.5 && ph <= 8.5)  setCardStatus('stat-ph', 'Normal', 'ok');
+    else if (ph >= 6.0 && ph <= 9.0) setCardStatus('stat-ph', 'Perhatian', 'warn');
+    else setCardStatus('stat-ph', 'Kritis!', 'crit');
+
+    // Flow status
+    const flow = d.flow;
+    if (flow > 0) setCardStatus('stat-flow', 'Mengalir', 'ok');
+    else setCardStatus('stat-flow', 'Tidak Mengalir', 'warn');
+
+    // Level status
+    if (pct >= 50)      setCardStatus('stat-pct', 'Aman', 'ok');
+    else if (pct >= 20) setCardStatus('stat-pct', 'Cukup', 'warn');
+    else                setCardStatus('stat-pct', 'Rendah!', 'crit');
+
+    // Push to charts
+    pushChart(chartPH,    timeStr, d.ph);
+    pushChart(chartFlow,  timeStr, d.flow);
+    pushChart(chartLevel, timeStr, d.water_level);
+
+    setStatus(true, 'Terhubung');
+    document.getElementById('last-update').textContent = timeStr;
+
+  } catch (err) {
+    console.error(err);
+    setStatus(false, 'Gagal: ' + err.message);
+  }
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Preserve inner <span> (unit)
+  const span = el.querySelector('span');
+  el.childNodes[0].textContent = val;
+}
+
+function setCardStatus(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = `card-status status-${type}`;
+}
+
+function setStatus(ok, msg) {
+  const badge = document.getElementById('status-badge');
+  const text  = document.getElementById('status-text');
+  text.textContent = msg;
+  badge.style.background = ok ? 'rgba(34,211,160,0.12)' : 'rgba(248,113,113,0.12)';
+  badge.style.color       = ok ? 'var(--green)' : 'var(--red)';
+  badge.style.borderColor = ok ? 'rgba(34,211,160,0.3)' : 'rgba(248,113,113,0.3)';
+  badge.querySelector('.dot').style.background = ok ? 'var(--green)' : 'var(--red)';
+}
+
+// ================================================================
+// Auto refresh
+// ================================================================
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+</body>
+</html>
