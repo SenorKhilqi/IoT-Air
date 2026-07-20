@@ -40,31 +40,7 @@ CREATE POLICY "Allow anon SELECT"
     USING (true);
 
 -- ================================================================
--- Data Dummy untuk Testing Dashboard
--- 1000 baris mundur 5 menit per baris (~3.5 hari)
+-- Schema siap digunakan.
+-- Jalankan file ini di Supabase SQL Editor untuk inisialisasi database.
+-- Data dummy telah dihapus — tabel akan diisi oleh perangkat ESP32.
 -- ================================================================
-INSERT INTO sensor_logs (created_at, ph, flow, total_liter, water_level, water_percent, wifi_status)
-SELECT
-    NOW() - ((1000 - i) * interval '5 minutes') AS created_at,
-    -- pH: 6.0 - 8.5 dengan variasi diurnal
-    round((
-        7.0
-        + sin(i * 0.15) * 0.8
-        + (random() - 0.5) * 0.3
-    )::numeric, 2)::FLOAT AS ph,
-    -- Flow: 0 - 8 L/min (0 saat malam)
-    CASE
-        WHEN (i % 288) BETWEEN 72 AND 216 -- Siang hari (jam 6 - 18)
-        THEN round((random() * 7.5 + 0.5)::numeric, 2)::FLOAT
-        ELSE 0.0
-    END AS flow,
-    -- Total Liter akumulasi
-    round((i * random() * 0.5)::numeric, 2)::FLOAT AS total_liter,
-    -- Water Level: 5 - 40 cm
-    round((20 + sin(i * 0.02) * 15 + (random() - 0.5) * 2)::numeric, 1)::FLOAT AS water_level,
-    -- Water Percent
-    LEAST(100, GREATEST(0,
-        ROUND((20 + sin(i * 0.02) * 15 + (random()-0.5)*2) / 40 * 100)
-    ))::INTEGER AS water_percent,
-    'Online' AS wifi_status
-FROM generate_series(1, 1000) AS s(i);

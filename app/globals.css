@@ -17,38 +17,66 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
+  background-attachment: fixed;
 }
 
 /* Custom Grid Background for Premium Monitoring Feel */
 .bg-grid-pattern {
-  background-size: 40px 40px;
+  background-size: 60px 60px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
 }
 
 .glass-panel {
-  background: rgba(15, 23, 42, 0.6); /* slate-900 with opacity */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background: rgba(15, 23, 42, 0.4); /* Extra transparent slate-900 */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.05) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* Neon Glow effects */
 .glow-safe {
-  box-shadow: 0 0 40px -10px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 50px -15px rgba(16, 185, 129, 0.25);
 }
 
 .glow-danger {
-  box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.4);
-  animation: pulse-danger 2s infinite;
+  box-shadow: 0 0 60px -15px rgba(239, 68, 68, 0.4);
+  animation: pulse-danger 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.glow-warning {
+  box-shadow: 0 0 50px -15px rgba(245, 158, 11, 0.3);
+}
+
+.glow-info {
+  box-shadow: 0 0 50px -15px rgba(59, 130, 246, 0.3);
 }
 
 @keyframes pulse-danger {
-  0% { box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 60px -5px rgba(239, 68, 68, 0.7); }
-  100% { box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.4); }
+  0% { box-shadow: 0 0 50px -15px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 80px -10px rgba(239, 68, 68, 0.6); }
+  100% { box-shadow: 0 0 50px -15px rgba(239, 68, 68, 0.3); }
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }

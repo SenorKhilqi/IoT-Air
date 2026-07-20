@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LineChart } from "lucide-react";
+import { LayoutDashboard, LineChart, History } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -19,6 +19,12 @@ export default function Navbar() {
         <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${pathname === "/statistics" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
           <LineChart className="w-4 h-4" />
           <span className="text-sm font-semibold">Statistics</span>
+        </div>
+      </Link>
+      <Link href="/history">
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${pathname === "/history" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
+          <History className="w-4 h-4" />
+          <span className="text-sm font-semibold">History</span>
         </div>
       </Link>
     </nav>
